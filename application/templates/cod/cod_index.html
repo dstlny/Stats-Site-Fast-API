@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block functions %}
+	<script type='text/javascript'>
+		history.replaceState({}, null, location.protocol + '//' + location.host + location.pathname);
+
+		const player_name = "{{player_name}}";
+		const platform = "{{ platforms }}"
+		const titles = [{% for x in titles %}"{{x.ref}}",{% endfor %}]
+		const all_modes = {{ all_modes|safe }};
+		const mode_types = {{ mode_types|safe }}
+		window.endpoints = {{ api_endpoints|safe }}
+
+		$(document).ready(function () {
+
+			$.ajax({
+				data: JSON.stringify({
+					player_name: player_name,
+					platform: platform,
+					game_mode: all_modes
+				}),
+				type: 'POST',
+				dataType: 'json',
+				url: window.endpoints.stats
+			}).done((response) => {
+				for (let i = 0, len=titles.length; i < len; i++){
+					let title = titles[i]
+
+					let stats = response.titles[title].stats
+					let matches = response.titles[title].matches
+					
+					// render mode (domination, king of the hill, BR) stats
+					for (let i = 0, len=all_modes.length; i < len; i++){
+						let mode = all_modes[i]
+
+						if(stats[mode]){
+							let game_mode_stats = stats[mode].stats
+							let $element =  $(`[id*='${title}-${mode}-stats'] > .card-body`)
+
+							let html = [`<div class="row">`]
+							for (let l = 0, len=game_mode_stats.length; l < len; l++){
+								let text = game_mode_stats[l].text
+								let value = game_mode_stats[l].value
+
+								html.push(`<div class='col-md-3'><div class="card" style='margin: 10px; padding: 10px;'>
+								<div class="card-block"><h6 class="card-title">${text}</h6><hr><p class="card-text">${value}</p>
+								</div></div></div>`)
+							}
+							html.push(`</div>`)
+							$element.append(html.join(''))
+						}
+
+					}
+
+					// render mode type (Multiplayer, Warzone) match stats
+					for (let i = 0, len=mode_types.length; i < len; i++){
+						let mode_type = mode_types[i]
+
+						if(matches[mode_type]){
+							let game_mode_stats = matches[mode_type]
+							let $element =  $(`[id*='${title}-${mode_type}-matches'] > .card-body`)
+							
+							let html = []
+							for (let l = 0, len=game_mode_stats.length; l < len; l++){
+
+								let stats = game_mode_stats[l].stats
+								let mode = game_mode_stats[l].mode
+								let teams = game_mode_stats[l].teams
+								let match_end = game_mode_stats[l].match_end || 'No end date recorded'
+								let match_start = game_mode_stats[l].match_start || 'No start date recorded'
+
+								html.push(`<div class="accordion" id="accordion${title}${mode_type}${l}"><div class="card" style='margin: 10px'><div class="card-header"><button class='btn' type="button" data-toggle="collapse" data-target="#collapse${title}${mode_type}${l}" aria-expanded="true" aria-controls="collapse${title}${mode_type}${l}">
+								${mode} (${match_start} / ${match_end})</button></div><div id="collapse${title}${mode_type}${l}" class="collapse" aria-labelledby="heading${title}${mode_type}${l}" data-parent="#accordion${title}${mode_type}${l}"><div class="row no-gutters">`)
+								
+								for (let p = 0, len=stats.length; p < len; p++){
+									html.push(`<div class="col-md-2 border" style='margin: 5px; padding: 10px;'>${stats[p].text}<hr>${stats[p].value}</div>`)
+								}
+
+								html.push(`</div>`)
+
+								if(teams){
+									for (let k = 0, klen=teams.length; k < klen; k++){
+										let team_members = teams[k].members.some(member=> {
+											return member.player_name.toLowerCase() === player_name
+										})
+
+										html.push(`<div class="accordion" id="accordion${title}${mode_type}${l}-${team_members ? 'friendly' : 'enemy'}-team">
+											<div class="card" style='margin: 10px'><div class="card-header">
+											<button class='btn' type="button" data-toggle="collapse" data-target="#collapse${title}${mode_type}${l}-team${k}" aria-expanded="true" aria-controls="collapse${title}${mode_type}${l}-team${k}">
+											${team_members ? 'Friendly' : 'Enemy'} team members</button></div>
+											<div id="collapse${title}${mode_type}${l}-team${k}" class="collapse" aria-labelledby="heading${title}${mode_type}${l}-team${k}" data-parent="#accordion${title}${mode_type}${l}-${team_members ? 'friendly' : 'enemy'}-team">
+											<div class="row no-gutters"><table class='table table-striped'><thead><tr><th colspan='2'>${team_members ? 'Friendly' : 'Enemy'} Team members</th></tr>
+											<tr><th>Platform</th><th>Username</th></tr></thead><tbody>`)
+
+											for (let j = 0, jlen=teams[k].members.length; j < jlen; j++){
+												html.push(`<tr><td>${teams[k].members[j].platform.name}</td><td>${teams[k].members[j].player_name.toLowerCase() == player_name ? teams[k].members[j].player_name + ' (you)' : teams[k].members[j].player_name}</td></tr>`)
+											}
+
+											html.push(`</tbody></table></div></div></div></div>`)
+										}
+									}
+								
+								html.push(`</div></div></div>`)
+							}
+							$element.append(html.join(''))
+
+						}
+
+					}
+
+				}
+
+			}).fail((data) => {
+				// eh
+			});
+		
+		});
+
+	</script>
+{% endblock %}
+
+{% block extra_functions %}{% endblock %}
+
+{% block breadcrumbs %}
+	{{ super() }}
+	<li class="breadcrumb-item">
+		<a href="/{{module.short_name}}/">
+			{{ module.title_name|upper }}
+		</a>
+	</li>
+	<li class="breadcrumb-item active">
+		{{player_name}} <button type="button" class="close favourite" style='margin-top: -25px' id="favourite_player" onclick="window.favouritesService.pushFavouriteForModule('{{ module.short_name }}', { text: '{{ player_name }}\'s profile', href: window.location.href })"><i class="far fa-star"></i></button>
+	</li>
+{% endblock breadcrumbs %}
+
+{% block body %}
+	{% for title in titles %}
+		<div id="{{title.ref}}accordion">
+			<div class="card">
+				<div class="card-header"> 
+					<button class="btn" data-toggle="collapse" data-target="#{{title.ref}}Collapse" aria-expanded="true" aria-controls="{{title.ref}}Collapse">
+						{{title.name}} Stats
+					</button>
+				</div>
+				<div id="{{title.ref}}Collapse" class="collapse" aria-labelledby="{{title.ref}}Heading" data-parent="#{{title.ref}}accordion">
+					<div class="card-body">
+						<ul class="nav nav-tabs card-header-tabs pull-left"  id="modeTab" role="tablist">
+							{% if title.lifetime_stats %}
+								<li class="nav-item {% if loop.first %}active{% endif %}">
+									<a class="nav-link {% if loop.first %}active{% endif %}" id="{{title.ref}}-lifetime-tab" data-toggle="tab" href="#{{title.ref}}-lifetime" role="tab" aria-controls="{{title.ref}}-lifetime" aria-selected="{% if loop.first %}true{% else %}false{% endif %}">
+										Overview
+									</a>
+								</li>
+							{% endif %}
+							{% if title.gamemode_stats %}
+								<li class="nav-item">
+									<a class="nav-link" id="{{title.ref}}-gamemode-tab" data-toggle="tab" href="#{{title.ref}}-gamemode" role="tab" aria-controls="{{title.ref}}-gamemode" aria-selected="false">
+										Game Mode Overview
+									</a>
+								</li>
+							{% endif %}
+							{% if title.killstreak_stats|length > 0 %}
+								<li class="nav-item">
+									<a class="nav-link" id="{{title.ref}}-killstreaks-tab" data-toggle="tab" href="#{{title.ref}}-killstreaks" role="tab" aria-controls="{{title.ref}}-killstreaks" aria-selected="false">
+										Killstreaks Overview
+									</a>
+								</li>
+							{% endif %}
+							{% for mode in title.mode %}
+								{% if mode.matches_in_mode %}
+									<li class="nav-item">
+										<a class="nav-link" id="{{title.ref}}-{{mode.ref}}-matches-tab" data-toggle="tab" href="#{{title.ref}}-{{mode.ref}}-matches" role="tab" aria-controls="{{title.ref}}-{{mode.ref}}-matches" aria-selected="false">
+											{{ mode.name }} Matches
+										</a>
+									</li>
+								{% endif %}
+							{% endfor %}
+						</ul>
+						<div class="tab-content" id="modeTabContent">
+
+							{% if title.lifetime_stats %}
+
+								<div class="tab-pane fade show {% if loop.first %}active{% endif %}" id="{{title.ref}}-lifetime" role="tabpanel" aria-labelledby="{{title.ref}}-lifetime">
+									
+									<div class="card-body">
+
+										{% for key, stats in title.lifetime_stats.items() %}
+											{% if key not in not_display %}
+
+												<div class="row">
+													<div class='col-md-12'>
+														<div class="card" style='margin: 10px'>
+															<div class="card-body">
+																<h6 class="card-title">
+																	{% if key in labels %}
+																		{{ labels[key] }}
+																	{% else %}
+																		{{ key }}
+																	{% endif %}
+																</h6>
+																<hr>
+																<p class="card-text">{{ stats }}</p>
+															</div>
+														</div>
+													</div>
+												</div>
+											{% endif %}
+										{% endfor %}
+
+									</div>
+									
+								</div>
+							{% endif %}
+
+							{% if title.gamemode_stats %}
+
+								<div class="tab-pane fade show" id="{{title.ref}}-gamemode" role="tabpanel" aria-labelledby="{{title.ref}}-gamemode">
+									
+									<div class="card-body">
+
+										<ul class="nav nav-tabs card-header-tabs pull-left"  id="statsTab" role="tablist">
+
+											{% for game_mode in title.gamemode_stats %}
+												<li class="nav-item">
+													<a class="nav-link" id="{{title.ref}}-{{game_mode.ref}}-stats-tab" data-toggle="tab" href="#{{title.ref}}-{{game_mode.ref}}-stats" role="tab" aria-controls="{{title.ref}}-{{game_mode.ref}}-stats" aria-selected="false">
+														{{ game_mode.name }}
+													</a>
+												</li>
+											{% endfor %}
+
+										</ul>
+
+										<div class="tab-content" id="statsTabContent">
+											
+											{% for game_mode in title.gamemode_stats %}
+
+												<div class="tab-pane fade show" id="{{title.ref}}-{{game_mode.ref}}-stats" role="tabpanel" aria-labelledby="{{title.ref}}-{{game_mode.ref}}-stats">
+													<div class="card-body"></div>
+												</div>
+
+											{% endfor %}
+
+										</div>
+								
+									</div>
+									
+								</div>
+
+							{% endif %}
+
+							{% if title.killstreak_stats|length > 0 %}
+
+								<div class="tab-pane fade show" id="{{title.ref}}-killstreaks" role="tabpanel" aria-labelledby="{{title.ref}}-killstreaks">
+									
+									<div class="card-body">
+
+										<ul class="nav nav-tabs card-header-tabs pull-left"  id="killstreaksTab" role="tablist">
+
+											{% for kill_streak in title.killstreak_stats %}
+												<li class="nav-item">
+													<a class="nav-link" id="{{title.ref}}-{{kill_streak.ref}}-stats-tab" data-toggle="tab" href="#{{title.ref}}-{{kill_streak.ref}}-stats" role="tab" aria-controls="{{title.ref}}-{{kill_streak.ref}}-stats" aria-selected="false">
+														{{ kill_streak.name }}
+													</a>
+												</li>
+											{% endfor %}
+
+										</ul>
+
+										<div class="tab-content" id="killstreakStatsTabContent">
+											
+											{% for kill_streak in title.killstreak_stats %}
+
+												<div class="tab-pane fade show" id="{{title.ref}}-{{kill_streak.ref}}-stats" role="tabpanel" aria-labelledby="{{title.ref}}-{{kill_streak.ref}}-stats">
+													<div class="card-body"></div>
+												</div>
+
+											{% endfor %}
+
+										</div>
+								
+									</div>
+									
+								</div>
+
+							{% endif %}
+
+							{% for mode in title.mode %}
+								{% if mode.matches_in_mode %}
+									<div class="tab-pane fade show" id="{{title.ref}}-{{mode.ref}}-matches" role="tabpanel" aria-labelledby="{{title.ref}}-{{mode.ref}}-matches">
+										<div class="card-body"></div>
+									</div>
+								{% endif %}
+							{% endfor %}
+
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<br>
+	{% endfor %}
+{% endblock %}

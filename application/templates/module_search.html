@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block functions %}
+	<script>
+		$(document).ready(() => {
+			if(
+				(typeof window.recentSearchesService.getRecentSearchesForModule !== undefined)
+			){
+				window.recentSearchesService.getRecentSearchesForModule("{{ module.short_name }}", false)
+			}
+
+			let $search_form = $("#search_form")
+			let $error = $('#error')
+			let $error_message = $('#error_message')
+			
+			$search_form.submit((event) => {
+				event.preventDefault()
+				
+				$.LoadingOverlay('show', {
+					background: "rgba(255, 255, 255, 1)",
+					image: '',
+					text: 'Current loading the users matches..'
+				});
+				if(window.authService.authed){
+					clearInterval(window.authService.is_authed_interval)
+				}
+				$.ajax({
+					type: $search_form.attr('method'),
+					url: $search_form.attr("action"),
+					data: JSON.stringify({
+						player_name: $('#id_player_name').val(),
+						platform: $('#id_platform').val(),
+						title: $('#id_title').val()
+					}),
+					beforeSend: (xhr) => {
+						$.LoadingOverlay("show");
+					}
+				}).done((data) => {
+					window.location = data.redirect			
+				}).fail((error) => {
+					if(error.status == 503){
+						setTimeout(() => {
+							$search_form.submit()
+						}, 5000)
+					} else {
+						$error_message.text(error.responseJSON.detail)
+						$error.show()			
+						$.LoadingOverlay("hide", true);
+					}
+				})
+			});
+		});
+	</script>
+{% endblock %}
+
+{% block breadcrumbs %}
+	{{ super() }}
+	<li class="breadcrumb-item active">
+		{{ module.title_name|upper }}
+	</li>
+{% endblock breadcrumbs %}
+
+{% block body %}
+	<div class="card shadow-sm">
+		<div class='card-header' style="text-align: center">
+			Welcome!
+		</div>
+		<div class="card-body">
+			<form method="POST" action='{{ module.module_search_url }}' class="form-horizontal" id='search_form'>
+				{{ forms.search_field(name='player_name',placeholder='Enter a Players Name', required='true', value=player_name) }}
+				{{ forms.select_field(name='platform', required='true', options=module.platforms, value=platform) }}
+				{% if module.titles %}
+					{{ forms.select_field(name='title', required='true', options=module.titles, value=title) }}
+				{% endif %}
+				<input type="submit" style="display: none" />
+				<div id='recent_searches' style="display: none">
+					<hr>
+					<h6>Some of your recent Searches:</h6>
+				</div>
+
+				<!-- Modal -->
+				<div class="modal fade" id="modelCountdown" tabindex="-1" role="dialog" aria-labelledby="modelCountdownTitle" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+					<div class="modal-dialog modal-dialog-centered" role="document">
+						<div class="modal-content">
+							<div class="modal-header">
+								<h5 class="modal-title" id="modelCountdownTitle">Currently processing player, this could take upto 30 seconds...</h5>
+								<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+									<span aria-hidden="true">&times;</span>
+								</button>
+							</div>
+							<div class="modal-body">
+								<label id="time" style='font-size: 30px'>Redirecting in... 30 seconds</label>
+								<div id='progressbar' class='progressbar'>
+									<div class='inner'></div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+			</form>
+		</div>
+	</div>
+	<br>
+	<div class="card shadow-sm">
+		<div class='card-header' style="text-align: center">
+			FAQ
+		</div>
+		<div class="card-body">
+			{{ module.desc|safe }}
+		</div>
+	</div>
+{% endblock %}

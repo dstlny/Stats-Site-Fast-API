@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block functions %}
+	<script src="{{ url_for('static', path='js/pubg_functions.js') }}"></script>
+{% endblock %}
+
+{% block extra_functions %}
+
+	<script type='text/javascript'>
+		window.endpoints = {{ api_endpoints|safe }}
+			
+		$(document).ready(function() {
+			if(
+				(typeof window.recentSearchesService.pushNewRecentSearchToRecentSearches !== undefined)
+				&&
+				(typeof window.recentSearchesService.getRecentSearchesForModule !== undefined)
+			){
+				window.recentSearchesService.pushNewRecentSearchToRecentSearches({
+					'text': `{{ player_name }}`,
+					href: window.location.href,
+					module: "{{ module.short_name }}"
+				})
+				window.recentSearchesService.getRecentSearchesForModule("{{ module.short_name }}", false)
+			}
+
+			if(window.favouritesService.fav_available){
+				window.favouritesService.initFavourites("{{ module.short_name }}")
+			}
+
+		});
+	</script>
+{% endblock %}
+
+{% block breadcrumbs %}
+	{{ super() }}
+	<li class="breadcrumb-item">
+		<a href="/{{module.short_name}}/">
+			{{ module.title_name|upper }}
+		</a>
+	</li>
+	<li class="breadcrumb-item active">
+		{{ player_name }}
+	</li>
+{% endblock breadcrumbs %}
+
+{% block body %}
+	<style type='text/css'>
+		td.details-control {
+			background: url('https://www.datatables.net/examples/resources/details_open.png') no-repeat center center;
+			cursor: pointer;
+		}
+		tr.shown td.details-control {
+			background: url('https://www.datatables.net/examples/resources/details_close.png') no-repeat center center;
+		}
+		.top-buffer {
+			margin-top:20px;
+		}
+	</style>
+
+	<div class="card shadow-sm">
+		<div class='card-header' style="text-align: center">
+			Welcome!
+			<button type="button" class="close favourite" id="favourite_player" onclick="window.favouritesService.pushFavouriteForModule('{{ module.short_name }}', { text: '{{ player_name }}\'s profile', href: window.location.href })">
+				<i class="far fa-star"></i>
+			</button>
+		</div>
+		<div class="card-body">
+			{{ forms.select_field_two_one_line(name_one='perspective', required_one='false', options_one=perspective_selections, name_two='game_mode', required_two='false', options_two=gamemode_selections) }}
+			<div id='recent_searches' style='display: none; padding-left: 20px; padding-right: 20px; padding-bottom: 20px;'>
+				<hr>
+				<h6>Some of your recent Searches:</h6>
+			</div>
+			<input type="hidden" id="id_platform" value="{{ platform }}">
+			<input type="hidden" id="player_id" value="{{ account_id }}">
+			<input type="hidden" id="player_name" value="{{ player_name }}">
+			<hr>
+			<b>
+				<div id='countdown' class='text-center'>
+					Requesting users matches....
+				</div>
+			</b>
+		</div>
+	</div>
+
+	<br>
+	<div class="card accordion" id='seasons_container'>
+			
+		<div class='card-header' id="season_stats_button" data-toggle="collapse" data-target="#season_stats_show_hide_container" aria-expanded="false" aria-controls="season_stats">
+			Show/Hide Season Stats
+		</div>
+
+		<div class='card-body collapse' id="season_stats_show_hide_container">
+
+			<ul class="nav nav-tabs" role="tablist">
+				<li class="nav-item">
+					<a class="nav-link active" id="normal-tab" data-toggle="tab" href="#normal" role="tab" aria-selected="true" aria-controls="normal">
+						Normal Stats
+					</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" id="ranked-tab" data-toggle="tab" href="#ranked" role="tab" aria-selected="false" aria-controls="ranked">
+						Ranked Stats
+					</a>
+				</li>
+			</ul>
+			<div class="tab-content">
+
+				<div class="tab-pane card-body active" id="normal" role="tabpanel">
+
+					<div id="season_stats">
+						<div class='row' id='fpp_row' style='margin-bottom: 10px'>
+							{% include "includes/normal/solo_fpp_season_stats.html" %}
+							{% include "includes/normal/duo_fpp_season_stats.html" %}
+							{% include "includes/normal/squad_fpp_season_stats.html" %}
+						</div>
+						<div class="row" id='tpp_row'style='margin-top: 10px'>
+							{% include "includes/normal/solo_season_stats.html" %}
+							{% include "includes/normal/duo_season_stats.html" %}
+							{% include "includes/normal/squad_season_stats.html" %}
+						</div>
+					</div>
+
+				</div>
+
+				<div class="tab-pane card-body" id="ranked" role="tabpanel">
+
+					<div id="ranked_season_stats">
+						<div class='row' id='ranked_row' style='margin-bottom: 10px'>
+							{% include "includes/ranked/ranked_squad_fpp_season_stats.html" %}
+							{% include "includes/ranked/ranked_squad_season_stats.html" %}
+						</div>
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+
+	</div>
+
+	<br>
+
+	<div class="card accordion shadow-sm" id='display_choice' >
+		<div class="btn-group btn-group-toggle" data-toggle="buttons">
+			<label class="btn btn-light active">
+				<input type="radio" name="options" id="as_table" autocomplete="off" checked> Table
+			</label>
+			<label class="btn btn-light">
+				<input type="radio" name="options" id="as_detailed_cards" autocomplete="off"> Detailed
+			</label>
+			<label class="btn btn-light">
+				<input type="radio" name="options" id="as_compact_cards" autocomplete="off"> Compact
+			</label>
+		</div>
+	</div>
+
+	<div class="card" style='border: 0px; display: none; background-color: transparent;' id='card_container'>
+		<br>
+		<div class="alert alert-warning alert-dismissible fade show" style='display: none;' role="alert" id='not_matching'>
+			<strong>
+				Sorry, you've played no recent matches that match this criteria...
+			</strong>
+			<button type="button" class="close" data-dismiss="alert" aria-label="Close" >
+				<span aria-hidden="true">&times;</span>
+			</button>
+		</div>
+
+		<div class="row" id='card_container_row'>
+			
+		</div>
+
+	</div>
+
+	<div class="card accordion shadow-sm" id='datatable_container'>
+		<div class="card-header">
+			<b>Please note:</b>
+			<ol>
+				<li>The data in this table is refreshed every 30 minutes.</li>
+				<li>If the table is stuck 'Loading' simply refresh the page.</li>
+				<li>Only matches from the last 14 days, will show here.</li>
+			</ol>
+		</div>
+		<div class="card-body table-responsive-sm">
+			<table class='table table-sm compact' id='results_datatable'  style="width:100%">
+				<thead>
+					<tr>
+						<th></th>
+						<th>Map</th>
+						<th>Mode</th>
+						<th>Created</th>
+						<th>Placement</th>
+						<th>Details</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+				</tbody>
+			</table>
+		</div>
+	</div>
+{% endblock %}

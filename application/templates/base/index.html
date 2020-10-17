@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block functions %}
+{% endblock %}
+
+{% block extra_functions %}
+{% endblock %}
+
+{% block body %}
+	<style type='text/css'>
+		a:hover{
+			text-decoration: none;
+		}
+	</style>
+	<div class="card shadow-sm">
+		<div class='card-body'>
+			<div class="row">
+				{% for module in modules %}
+					<div class="col-md-6">
+						<div class="card h-100">
+							<a href="{{ module.prefix }}" target="_self">
+								<img class="card-img-top img-fluid" src="{{ module.image }}" alt="{{ module.name }} image">
+								<div class="card-body" style='color: #000000'>
+									<h4 class="card-title text-center" style='text-decoration: none;'>{{ module.name }}</h4>
+								</div>
+							</a>
+						</div>
+					</div>
+				{% endfor %}
+			</div>
+		</div>
+	</div>
+{% endblock %}

@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block functions %}{% endblock %}
+
+{% block breadcrumbs %}
+	{{ super() }}
+	<li class="breadcrumb-item active">{{ module.title_name|upper }} Leaderboards for {{platform|upper}}</li>
+{% endblock breadcrumbs %}
+
+{% block body %}
+<script type='text/javascript'>
+		
+	const platform = "{{ platform }}"
+	const base_url = window.location.href
+	const endpoints = {{ api_endpoints|safe }}
+
+	$(document).ready(() => {
+
+		let table = $('#datatable').DataTable({
+			columns: [
+				{ "title": "Rank", "targets": 0 },
+				{ "title": "Name", "targets": 1 },
+				{ "title": "Total Headshots","targets": 2 },
+				{ "title": "Score Per Minute", "targets": 3 },
+				{ "title": "Total Games", "targets": 4 },
+				{ "title": "Wins", "targets": 5 }
+			],
+			data: [],
+			pageLength: 100,
+			order: [
+				[0, "asc"]
+			],
+			paging: true,
+			bFilter: true,
+			bSort: true,
+			bLengthChange: true,
+		});
+
+		const game_mode = null
+		const title = null
+
+		let validateFields = () => {
+			let title = $("#id_title > option:selected").val() || null;
+			let game_mode = $("#id_game_mode > option:selected").val() || null;
+				
+			if(title === null || game_mode === null){
+				return false
+			}
+
+			return true
+		}
+
+		validateFields()
+
+		$("#id_title, #id_game_mode").change(() => {
+			
+			const title = $("#id_title").val() || null;
+			const game_mode = $("#id_game_mode").val() || null;
+
+			if(title !== null && game_mode !== null){
+				$('#error-message').hide()
+
+				$.ajax({
+					type: 'POST',
+					data: JSON.stringify({ platform: platform, title: title, game_type: game_mode }),
+					url: endpoints.leaderboards
+				}).done((response) => {
+					table.clear().draw()
+					let leaderboard_data = response.data
+					let message = response.message
+
+					if(leaderboard_data){
+						let data = []
+
+						for (let i=0, len=leaderboard_data.length; i < len; i++){
+							let row = leaderboard_data[i]
+
+							let name = row.username
+							let rank = row.rank
+
+							let headshots = row.headshots
+							let scorePerMinute = row.scorePerMinute
+							let totalGames = row.gamesPlayed
+							let kills = row.kills
+							let wins = row.wins
+
+							data.push([rank, name, headshots, scorePerMinute, totalGames, wins])
+						}
+
+						table.rows.add(data).draw()
+					} else {
+						$('#error-message').text(message).show()
+					}
+				});
+				
+			} else {
+
+				let error = ['<p>The following issues need correcting:<ol>']
+				
+				if(title === null){
+					error.push(`<li>You must select a Title</li>`)
+					$('#id_title').focus();
+				}
+
+				if(game_mode === null){
+					error.push(error += `<li>You must select a Game Mode</li>`)
+					$('#id_game_mode').focus();
+				}
+
+				error.push(`</ol></p>`)
+				
+				$('#error-message').html(error.join('')).show()
+
+			}
+
+		});
+
+	});
+
+</script>
+
+<div class="container" style='max-width: 1080px'>
+
+	<div class='card'>
+		<div class='card-body'>
+
+			<div class='row'>
+				{{ forms.select_field(name='title', required='true', options=title_selection) }}
+				{{ forms.select_field(name='game_mode', required='true', options=game_mode_selection) }}
+			</div>
+			<div class='row'>
+				<div class='col-md-12'>
+					<div class="alert alert-danger" role="alert" id='error-message'>
+						<p>
+							The following issues need corecting:
+							<ol>
+								<li>You must select a Title</li>
+								<li>You must select a Game Mode</li>
+							</ol>
+						</p>
+					</div>
+				</div>
+			</div>
+			<table class='table table-condensed hover' id='datatable' style="width:100%;">
+				<thead>
+					<tr>
+						<th>Rank</th>
+						<th>Name</th>
+						<th>Total Headshots</th>
+						<th>Score Per Minute</th>
+						<th>Total Games</th>
+						<th>Wins</th>
+					</tr>
+				</thead>
+				<tbody>
+				</tbody>
+			</table>
+
+		</div>
+	</div>
+
+</div>
+
+{% endblock %}
