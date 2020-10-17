@@ -2,6 +2,7 @@
 - Consists of a front-end (FastAPI with Jinja2) and a API - FastAPI + MySQL
 - Uses: [Tortoise ORM](https://github.com/tortoise/tortoise-orm "Tortoise ORM")
 - This is essentialy the following project: [https://github.com/dstlny/PUBG-API-Stats-Site](https://github.com/dstlny/PUBG-API-Stats-Site), just written in a different framework using different tools.
+- Currently deployed @ https://statssite.herokuapp.com/
 
 # Getting started - things that probably need to be done
 - Any version of Python3 that supports `Typing` should work.
