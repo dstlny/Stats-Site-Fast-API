@@ -26,7 +26,8 @@ MAP_BINDING = {
 	"Desert_Main": "Miramar",
 	"Range_Main": "Camp Jackal",
 	"Savage_Main": "Sanhok",
-	"Summerland_Main": "Karakin"
+	"Summerland_Main": "Karakin",
+	"Chimera_Main": "Paramo"
 }
 
 PLAYER_PLATFORM_URL_CACHE_KEY = '{}_{}_platform_url'
